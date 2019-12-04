@@ -36,34 +36,39 @@ class Broker():
     ## Returns a list of asks of the form ( price, quantity ).
     def post_asks( self, time ):
         #gets all the prices in the 'OtherData.csv'
-        print(time)
+
         prices = self.other_data['Cleared Price']
         temp = []
         for i in range(len(prices)): #goes through all the time and iterates through 24 hours
-            if i %24 == time: #price at the given time
-
+            if i %24 == time% 24: #price at the given time
                 temp.append(prices[i])
-        print(temp)
         averagePrice = sum(temp)/len(temp)
+        print(averagePrice, "price")
         pastUsage = []
         usage = []
-        try:
+        if len(self.customers) > 0:
             for customer in self.customers:
-                usage = self.customer_usage[customer]
+                usage = self.customer_usage[customer+1]
                 for i in range(len(usage)):
-                    if i % 24 == time:
-                        pastUsage.append(usage[i])
-            quantity = sum(usage)/len(usage)
-            quantity *= len(self.customers)
-        except:
-            for customer in self.customer_usage:
-                usage = self.customer_usage[customer]
-                for i in range(len(usage)):
-                    if i % 24 == 0:
+                    if i % 24 == time% 24:
                         pastUsage.append(usage[i])
             quantity = sum(usage)/len(usage)
 
-        return [ (i, 100) for i in range(1,101) ]
+            quantity *= len(self.customers)
+            print(quantity, "quantity")
+        else:
+            totalCustomer = 0
+            for customer in self.customer_usage:
+                totalCustomer += 1
+                usage = self.customer_usage[customer]
+                for i in range(len(usage)):
+                    if i % 24 == time% 24:
+                        pastUsage.append(usage[i])
+            quantity = sum(usage)/len(usage)
+            quantity *= (totalCustomer * .2)
+            print(quantity, "quantity")
+
+        return [ (averagePrice*.9, quantity), (averagePrice*.8, quantity/2), (averagePrice*.5, quantity/2) ]
 
     ## Returns a list of Tariff objects.
     def post_tariffs( self, time ):

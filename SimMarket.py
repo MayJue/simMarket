@@ -29,7 +29,7 @@ class Server():
 
     def run( self ):
 
-        NUMSTEPS = 24
+        NUMSTEPS = 30
 
         ## Gather bootstrap data and send it off to brokers
         usage_data, other_data = self.read_initial_data()
