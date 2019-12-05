@@ -11,6 +11,7 @@ class Broker():
 
         self.customer_usage = None
         self.other_data = None
+        self.currentData = None
 
         ## Lists to contain:
         ##     asks: tuples of the form ( quantity, price )
@@ -20,6 +21,12 @@ class Broker():
         self.asks      = []
         self.tariffs   = []
         self.customers = []
+
+        self.currentTotal = []
+        self.currentPrice = []
+        self.currentQuantity = []
+        self.currentUsage = []
+        self.currentTariffs = []
 
     ## A function to accept the bootstrap data set.  The data set contains:
     ##     usage_data, a dict in which keys are integer customer ID numbers,
@@ -33,17 +40,39 @@ class Broker():
         self.customer_usage = usage_data
         self.other_data = other_data
 
-    ## Returns a list of asks of the form ( price, quantity ).
-    def post_asks( self, time ):
-        #gets all the prices in the 'OtherData.csv'
-
+    def csvAveragePrice(self, time):
         prices = self.other_data['Cleared Price']
         temp = []
         for i in range(len(prices)): #goes through all the time and iterates through 24 hours
             if i %24 == time% 24: #price at the given time
                 temp.append(prices[i])
         averagePrice = sum(temp)/len(temp)
-        print(averagePrice, "price")
+        return averagePrice
+
+    def currentAveragePrice(self, time):
+        prices = self.currentPrice
+        temp = []
+        for i in range(len(prices)): #goes through all the time and iterates through 24 hours
+            if i %24 == (time) % 24: #price at the given time
+                temp.append(prices[i])
+        averagePrice = sum(temp)/len(temp)
+        return averagePrice
+    ## Returns a list of asks of the form ( price, quantity ).
+    def post_asks( self, time ):
+        #gets all the prices in the 'OtherData.csv'
+        averagePrice = 0
+        if len(self.currentPrice) == 0:
+            averagePrice = self.csvAveragePrice(time)
+        else:
+            pastCsvAveragePrice = self.csvAveragePrice(time-1)
+            curAveragePrice = self.currentAveragePrice(time -1)
+
+            csvAveragePrice = self.csvAveragePrice(time)
+            diff = pastCsvAveragePrice - curAveragePrice
+            if diff <= 5 or diff >= -5:
+                averagePrice = csvAveragePrice
+            elif diff > 5 or diff < -5:
+                averagePrice = csvAveragePrice + diff
         pastUsage = []
         usage = []
         if len(self.customers) > 0:
@@ -55,7 +84,6 @@ class Broker():
             quantity = sum(usage)/len(usage)
 
             quantity *= len(self.customers)
-            print(quantity, "quantity")
         else:
             totalCustomer = 0
             for customer in self.customer_usage:
@@ -66,18 +94,41 @@ class Broker():
                         pastUsage.append(usage[i])
             quantity = sum(usage)/len(usage)
             quantity *= (totalCustomer * .2)
-            print(quantity, "quantity")
-
+        diff = self.power - quantity
+        print(self.power, "power")
+        if self.power > 0:
+            if diff > quantity:
+                pass
+            else:
+                quantity += diff
+        else:
+            quantity += diff
         return [ (averagePrice*.9, quantity), (averagePrice*.8, quantity/2), (averagePrice*.5, quantity/2) ]
 
     ## Returns a list of Tariff objects.
     def post_tariffs( self, time ):
-
-        return [Tariff( self.idx, price=100, duration=3, exitfee=0 )]
+        averagePrice = 0
+        if len(self.currentPrice) == 0:
+            averagePrice = self.csvAveragePrice(time)
+        else:
+            pastCsvAveragePrice = self.csvAveragePrice(time-1)
+            curAveragePrice = self.currentAveragePrice(time)
+            csvAveragePrice = self.csvAveragePrice(time)
+            diff = pastCsvAveragePrice - curAveragePrice
+            if diff <= 5 or diff >= -5:
+                averagePrice = csvAveragePrice
+            elif diff > 5 or diff < -5:
+                averagePrice = csvAveragePrice + diff
+        return [Tariff( self.idx, price=averagePrice, duration=3, exitfee=averagePrice )]
 
     ## Receives data for the last time period from the server.
     def receive_message( self, msg ):
-        pass
+        self.currentData = msg
+        self.currentTotal.append(msg['Total'])
+        self.currentPrice.append(msg['Cleared Price'])
+        self.currentQuantity.append(msg['Cleared Quantity'])
+        self.currentUsage.append(msg['Customer Usage'])
+        self.currentTariffs.append(msg['Tariffs'])
 
     ## Returns a negative number if the broker doesn't have enough energy to
     ## meet demand.  Returns a positive number otherwise.
