@@ -38,7 +38,7 @@ class Server():
 
         ## Run simulation for a number of steps
         for step in range( NUMSTEPS ):
-
+            print(step)
             ## Let brokers post asks in the wholesale market
             asks = []
             asks_by_broker = dict()

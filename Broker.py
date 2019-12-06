@@ -60,6 +60,7 @@ class Broker():
     ## Returns a list of asks of the form ( price, quantity ).
     def post_asks( self, time ):
         #gets all the prices in the 'OtherData.csv'
+        print(time)
         averagePrice = 0
         if len(self.currentPrice) == 0:
             averagePrice = self.csvAveragePrice(time)
@@ -95,13 +96,13 @@ class Broker():
             quantity = sum(usage)/len(usage)
             quantity *= (totalCustomer * .2)
         diff = self.power - quantity
-        print(self.power, "power")
+
         if self.power > 0:
             if diff > quantity:
                 pass
             else:
                 quantity += diff
-        else:
+        elif self.power < 0:
             quantity += diff
         return [ (averagePrice*.9, quantity), (averagePrice*.8, quantity/2), (averagePrice*.5, quantity/2) ]
 
@@ -119,7 +120,7 @@ class Broker():
                 averagePrice = csvAveragePrice
             elif diff > 5 or diff < -5:
                 averagePrice = csvAveragePrice + diff
-        return [Tariff( self.idx, price=averagePrice, duration=3, exitfee=averagePrice )]
+        return [Tariff( self.idx, price=averagePrice, duration=3, exitfee=averagePrice/2 )]
 
     ## Receives data for the last time period from the server.
     def receive_message( self, msg ):
