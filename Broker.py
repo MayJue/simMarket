@@ -13,6 +13,7 @@ class Broker():
         self.other_data = None
         self.currentData = None
 
+        self.pastAverage = 0
         ## Lists to contain:
         ##     asks: tuples of the form ( quantity, price )
         ##     tariffs: Tariff objects to submit to the market
@@ -22,12 +23,9 @@ class Broker():
         self.tariffs   = []
         self.customers = []
 
-        self.currentTotal = []
         self.currentPrice = []
         self.currentQuantity = []
-        self.currentUsage = []
-        self.currentTariffs = []
-
+        self.imbalances = 0
     ## A function to accept the bootstrap data set.  The data set contains:
     ##     usage_data, a dict in which keys are integer customer ID numbers,
     ##                     and values are lists of customer's past usage profiles.
@@ -64,8 +62,9 @@ class Broker():
         averagePrice = 0
         if len(self.currentPrice) == 0:
             averagePrice = self.csvAveragePrice(time)
+            self.pastAverage = averagePrice
         else:
-            pastCsvAveragePrice = self.csvAveragePrice(time-1)
+            pastCsvAveragePrice = self.pastAverage
             curAveragePrice = self.currentAveragePrice(time -1)
 
             csvAveragePrice = self.csvAveragePrice(time)
@@ -95,15 +94,14 @@ class Broker():
                         pastUsage.append(usage[i])
             quantity = sum(usage)/len(usage)
             quantity *= (totalCustomer * .2)
-        diff = self.power - quantity
+        print(self.imbalances)
+        if self.imbalances > 0 and self.imbalances < quantity:
+            print('here')
+            quantity -= self.imbalances
+        elif self.imbalances < 0:
+            print('this')
+            quantity -= self.imbalances/2
 
-        if self.power > 0:
-            if diff > quantity:
-                pass
-            else:
-                quantity += diff
-        elif self.power < 0:
-            quantity += diff
         return [ (averagePrice*.9, quantity), (averagePrice*.8, quantity/2), (averagePrice*.5, quantity/2) ]
 
     ## Returns a list of Tariff objects.
@@ -125,11 +123,9 @@ class Broker():
     ## Receives data for the last time period from the server.
     def receive_message( self, msg ):
         self.currentData = msg
-        self.currentTotal.append(msg['Total'])
         self.currentPrice.append(msg['Cleared Price'])
         self.currentQuantity.append(msg['Cleared Quantity'])
-        self.currentUsage.append(msg['Customer Usage'])
-        self.currentTariffs.append(msg['Tariffs'])
+        self.imbalances = msg['Imbalance']
 
     ## Returns a negative number if the broker doesn't have enough energy to
     ## meet demand.  Returns a positive number otherwise.
